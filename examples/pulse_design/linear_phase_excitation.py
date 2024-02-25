@@ -136,9 +136,9 @@ pulse.set_amplitude(pulse_amplitude)
 pulse.get_info()
 
 isochromats = np.linspace(-2500, 2500, 500)
-magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats, position=,
-                                                          rf_pulse=pulse.get_waveform(1e-5), gradients=,
+magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats,
+                                                          rf_pulse=pulse.get_waveform(1e-5),
                                                           delta_time=1e-5)
 
-animation = visualise.non_selective_animation(pulse, magnetisation, isochromats, 1e-5, magnetisation.shape[0],
-                                              play=True, phase_mode=0, save_path=None)
+animation = visualise.non_selective_animation(pulse, magnetisation, isochromats, 1e-5,
+                                              play=True, repeat=True, phase_mode=0, save_path=None)

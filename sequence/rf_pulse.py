@@ -139,12 +139,9 @@ class RFPulse(SequenceObject):
         mxy_desired = math.sin(flip_angle)
 
         inversion_score = np.sum((weighting * (mz_profiles - mz_desired)) ** 2, axis=1)
-        mean_mz = np.mean(mz_profiles * weighting, axis=1, where=weighting > 0.5)
-
         excitation_score = np.sum((weighting * (mxy_profiles - mxy_desired)) ** 2, axis=1)
 
         ideal_amplitude = amplitudes[np.argmin(excitation_score + inversion_score)].item()
-        mean_mxy = np.mean(mxy_profiles * weighting, axis=1, where=weighting > 0.5)
 
         if display:
             fig, _ = plt.subplots(1, 2, figsize=(6, 6), sharex=True, sharey=True)
