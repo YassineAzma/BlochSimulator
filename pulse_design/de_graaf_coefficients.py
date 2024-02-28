@@ -61,8 +61,8 @@ amplitude = test.get_optimal_amplitude(30e-6, (-1000.0, 1000.0), np.pi / 2, disp
 test.set_amplitude(amplitude)
 
 isochromats = np.linspace(-2500, 2500, 500)
-magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats, position=,
-                                                          rf_pulse=test.get_waveform(1e-5), gradients=, delta_time=1e-5)
+magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats,
+                                                          rf_pulse=test.get_waveform(1e-5), delta_time=1e-5)
 
 animation = visualise.non_selective_animation(test, magnetisation, isochromats, 1e-5, magnetisation.shape[0], play=True,
                                               phase_mode=0, save_path=None)

@@ -58,13 +58,19 @@ def non_selective_rot3d_matrix(t1: float, t2: float, df: np.ndarray,
     return magnetisation
 
 
-@numba.njit((float64[:, :, ::1])(float64, float64, float64[:, ::1], complex128[::1], float64[:, ::1], float64),
+@numba.njit((float64[:, :, ::1])(float64, float64, float64[:, ::1], complex128[::1],
+                                 float64[:], float64[:], float64[:], float64),
             parallel=True, cache=True)
 def selective_rot3d_matrix(t1: float, t2: float, position: np.ndarray,
-                           rf_pulse: np.ndarray, gradients: np.ndarray, delta_time: float = 1e-6):
+                           rf_pulse: np.ndarray,
+                           grad_x: np.ndarray, grad_y: np.ndarray, grad_z: np.ndarray,
+                           delta_time: float = 1e-6):
     rf_waveform = rf_pulse * GAMMA_RAD * delta_time
     mag_rf = np.abs(rf_waveform)
     phase_rf = np.angle(rf_waveform)
+
+    gradients = np.vstack((grad_x, grad_y, grad_z))
+    print(gradients.max())
     gradient_waveform = gradients * GAMMA_RAD * delta_time
     sim_length = len(rf_pulse)
 
@@ -79,15 +85,13 @@ def selective_rot3d_matrix(t1: float, t2: float, position: np.ndarray,
             magnetisation[step, iso_num, :] = a @ magnetisation[step - 1, iso_num, :] + b
 
             # Gradient Rotation
-            if gradients is not None:
-                for grad_index, axis_position in enumerate(current_position):
-                    gradient_rotation = z_rot(axis_position * gradient_waveform[grad_index, step])
-                    magnetisation[step, iso_num, :] = gradient_rotation @ magnetisation[step, iso_num, :]
+            for grad_index, axis_position in enumerate(current_position):
+                gradient_rotation = z_rot(axis_position * gradient_waveform[grad_index, step - 1])
+                magnetisation[step, iso_num, :] = gradient_rotation @ magnetisation[step, iso_num, :]
 
             # RF Rotation
-            if rf_pulse is not None:
-                current_rot = mag_rf[step - 1], phase_rf[step - 1]
-                rf_rotation = arb_rot(*current_rot)
-                magnetisation[step, iso_num, :] = rf_rotation @ magnetisation[step, iso_num, :]
+            current_rot = mag_rf[step - 1], phase_rf[step - 1]
+            rf_rotation = arb_rot(*current_rot)
+            magnetisation[step, iso_num, :] = rf_rotation @ magnetisation[step, iso_num, :]
 
     return magnetisation

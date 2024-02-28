@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from bloch.simulate import non_selective_rot3d_matrix
+from sequence.gradient import Gradient
 from sequence.object import SequenceObject, generate_times
 
 
@@ -115,7 +116,7 @@ class RFPulse(SequenceObject):
         num_amplitudes = int(max_b1 / 1e-6)
         amplitudes = np.linspace(1e-6, max_b1, num_amplitudes)
 
-        initial_pulse = self.get_waveform(1e-4)
+        initial_pulse = self.get_waveform(5e-5)
         mult_num_iso = math.ceil(np.max(np.abs([value for value in desired_range])) / 500.0)
         frequency_limit = mult_num_iso * 500
 
@@ -207,27 +208,6 @@ def sinc_pulse(duration: float, bandwidth: float, delta_time: float,
                          f"BW = {bandwidth}Hz)")
 
 
-# Adiabatic Pulses
-def hypsec_pulse(duration: float, bandwidth: int,
-                 empirical_factor: float, delta_time: float) -> RFPulse:
-    times = generate_times(delta_time, duration)
-
-    beta = np.pi * bandwidth / empirical_factor
-
-    magnitude = 1 / np.cosh(beta * (times - duration / 2))
-    frequency_sweep = -empirical_factor * beta * np.tanh(beta * (times - duration / 2))
-    phase = np.cumsum(frequency_sweep) * delta_time
-
-    adiabatic_threshold = beta * np.sqrt(empirical_factor) / (np.pi * 42.58e6)
-
-    return RFPulse(delta_time, times, magnitude * np.exp(1j * phase),
-                   duration=duration, bandwidth=bandwidth,
-                   adiabatic_threshold=adiabatic_threshold,
-                   title=f"HS Pulse ($T_p$ = {round(duration * 1e3, 2)}ms, "
-                         f"BW = {bandwidth}Hz, μ = {empirical_factor}, "
-                         f"β = {round(beta, 1)}s⁻¹)")
-
-
 def gaussian_pulse(duration: float, bandwidth: float, delta_time: float,
                    hamming: bool = True) -> RFPulse:
     times = generate_times(delta_time, duration)
@@ -277,6 +257,52 @@ def hermite_pulse(duration: float, bandwidth: float, order: int, factors: list[f
                    title=f"Hermite Pulse ($T_p$ = {round(duration * 1e3, 2)}ms, "
                          f"BW = {bandwidth}Hz, order = {order}, "
                          f"factors = {*factors,}")
+
+
+# Adiabatic Pulses
+def hypsec_pulse(duration: float, bandwidth: int,
+                 empirical_factor: float, delta_time: float) -> RFPulse:
+    times = generate_times(delta_time, duration)
+
+    beta = np.pi * bandwidth / empirical_factor
+
+    magnitude = 1 / np.cosh(beta * (times - duration / 2))
+    frequency_sweep = -empirical_factor * beta * np.tanh(beta * (times - duration / 2))
+    phase = np.cumsum(frequency_sweep) * delta_time
+
+    adiabatic_threshold = beta * np.sqrt(empirical_factor) / (np.pi * 42.58e6)
+
+    return RFPulse(delta_time, times, magnitude * np.exp(1j * phase),
+                   duration=duration, bandwidth=bandwidth,
+                   adiabatic_threshold=adiabatic_threshold,
+                   title=f"HS Pulse ($T_p$ = {round(duration * 1e3, 2)}ms, "
+                         f"BW = {bandwidth}Hz, μ = {empirical_factor}, "
+                         f"β = {round(beta, 1)}s⁻¹)")
+
+
+def foci_pulse(duration: float, bandwidth: int, empirical_factor: float, gradient_strength: float,
+               delta_time: float) -> tuple[RFPulse, Gradient]:
+
+    times = generate_times(delta_time, duration)
+
+    beta = np.pi * bandwidth / empirical_factor
+    amplitude = np.where(np.cosh(beta * (times - duration / 2)) < 10.0, np.cosh(beta * (times - duration / 2)), 10.0)
+
+    plt.plot(amplitude)
+    plt.show()
+    magnitude = amplitude / np.cosh(beta * (times - duration / 2))
+    frequency_sweep = -empirical_factor * amplitude * beta * np.tanh(beta * (times - duration / 2))
+    phase = np.cumsum(frequency_sweep) * delta_time
+
+    rf_object = RFPulse(delta_time, times, magnitude * np.exp(1j * phase),
+                        duration=duration, bandwidth=bandwidth,
+                        title=f"FOCI Pulse ($T_p$ = {round(duration * 1e3, 2)}ms, "
+                              f"BW = {bandwidth}Hz, μ = {empirical_factor}, "
+                              f"β = {round(beta, 1)}s⁻¹)")
+
+    grad_object = Gradient(delta_time, times, gradient_strength * amplitude)
+
+    return rf_object, grad_object
 
 
 def create(data: np.ndarray, delta_time: float) -> RFPulse:

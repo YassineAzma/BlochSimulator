@@ -50,7 +50,7 @@ class Gradient(SequenceObject):
         temp_waveform = self.waveform
 
         if new_delta_time:
-            return self.amplitude * self.resample(new_delta_time, new_delta_time, temp_waveform)
+            return self.amplitude * self.resample(self.delta_time, new_delta_time, temp_waveform)
         else:
             return self.amplitude * temp_waveform
 
@@ -96,3 +96,10 @@ def trapezium_gradient(ramp_time: float, duration: float, amplitude: float,
     gradient = np.concatenate([rise_gradient, flat_gradient, fall_gradient])
 
     return Gradient(delta_time, times, gradient)
+
+
+def create(data: np.ndarray, delta_time: float) -> Gradient:
+    times = generate_times(delta_time, (len(data) - 1) * delta_time)
+    gradient = Gradient(delta_time, times, data)
+
+    return gradient
