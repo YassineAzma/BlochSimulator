@@ -53,6 +53,7 @@ class SequenceObject:
         self.amplitude = amplitude
 
     def crop(self):
+        """TO DO"""
         zero_amplitude = np.where(np.abs(self.get_waveform()) == 0)
         before = np.where(np.diff(zero_amplitude) > 1)
         print(before)

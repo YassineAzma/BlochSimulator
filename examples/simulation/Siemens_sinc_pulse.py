@@ -16,6 +16,7 @@ rf_pulse = extract_rf_pulse('sinc_pulse.txt', 0)
 
 pulse = sequence.rf.create(rf_pulse, 1e-6)
 pulse_amplitude = pulse.get_optimal_amplitude(30e-6, (-1000.0, 1000.0), np.pi / 2, display=True)
+pulse.get_info()
 pulse.set_amplitude(pulse_amplitude)
 
 # Prepare Bloch simulation

@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+from constants import GAMMA
 from sequence.object import SequenceObject, generate_times
 
 
@@ -53,6 +54,10 @@ class Gradient(SequenceObject):
             return self.amplitude * self.resample(self.delta_time, new_delta_time, temp_waveform)
         else:
             return self.amplitude * temp_waveform
+
+
+def calculate_excitation_amplitude(bandwidth: float, slice_thickness: float) -> float:
+    return bandwidth / (GAMMA * slice_thickness)
 
 
 def apply_eddy_currents(gradient: Gradient, amplitudes: np.ndarray,

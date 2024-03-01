@@ -116,7 +116,7 @@ class RFPulse(SequenceObject):
         num_amplitudes = int(max_b1 / 1e-6)
         amplitudes = np.linspace(1e-6, max_b1, num_amplitudes)
 
-        initial_pulse = self.get_waveform(5e-5)
+        initial_pulse = self.get_waveform(1e-4)
         mult_num_iso = math.ceil(np.max(np.abs([value for value in desired_range])) / 500.0)
         frequency_limit = mult_num_iso * 500
 
@@ -238,9 +238,8 @@ def hermite_pulse(duration: float, bandwidth: float, order: int, factors: list[f
 
     coefficients = hermite_dict.get(order)
     hermite_envelope = np.zeros_like(times)
-    times_term = 1e3 * (times - duration / 2) if order % 2 == 0 else 1 - abs(1e3 * (times - duration / 2))
     for index, (factor, coefficient) in enumerate(zip(factors, coefficients)):
-        hermite_envelope += factor * coefficient * times_term ** index
+        hermite_envelope += factor * coefficient * (1e3 * (times - duration / 2)) ** index
 
     hermite_envelope = np.clip(hermite_envelope, -1, 1)
 
@@ -280,13 +279,15 @@ def hypsec_pulse(duration: float, bandwidth: int,
                          f"β = {round(beta, 1)}s⁻¹)")
 
 
-def foci_pulse(duration: float, bandwidth: int, empirical_factor: float, gradient_strength: float,
+def foci_pulse(duration: float, bandwidth: int, empirical_factor: float,
+               gradient_strength: float, max_gradient_strength: float,
                delta_time: float) -> tuple[RFPulse, Gradient]:
 
     times = generate_times(delta_time, duration)
 
     beta = np.pi * bandwidth / empirical_factor
-    amplitude = np.where(np.cosh(beta * (times - duration / 2)) < 10.0, np.cosh(beta * (times - duration / 2)), 10.0)
+    amplitude = np.where(np.cosh(beta * (times - duration / 2)) < 10.0, np.cosh(beta * (times - duration / 2)),
+                         max_gradient_strength / gradient_strength)
 
     plt.plot(amplitude)
     plt.show()

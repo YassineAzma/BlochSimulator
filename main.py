@@ -10,12 +10,14 @@ from scipy import optimize
 
 
 def main():
-    isochromats = np.linspace(-1000, 1000, 500)
+    isochromats = np.linspace(-2000, 2000, 1000)
     positions = np.zeros((len(isochromats), 3))
-    positions[:, 2] = np.linspace(-5e-3, 5e-3, 500)
+    positions[:, 2] = np.linspace(-15e-3, 15e-3, 1000)
     gradient_x = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
     gradient_y = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
-    pulse_1, gradient_z = sequence.rf.foci_pulse(7.68e-3, 2000, 3.9, 3e-3, 1e-6)
+    pulse_1, gradient_z = sequence.rf.foci_pulse(7.68e-3, 2000, 3.9,
+                                                 4.7e-3, 30e-3, 1e-6)
+    # pulse_1 = sequence.rf.hermite_pulse(1.5e-3, 2000, 4, [0.14, 0, 0.55, 0, 0.4], 1e-6)
     pulse_1.get_info()
     pulse_1.display()
     pulse_1.set_delta_frequency(2.89 * 42.58 * 0)
@@ -36,7 +38,7 @@ def main():
                                                                       rf_pulse=pulse_1.get_waveform(delta_time),
                                                                       delta_time=delta_time)
     end_time = time.perf_counter()
-    sim_length, num_iso, _ = sel_magnetisation.shape
+    sim_length, num_iso, _ = non_sel_magnetisation.shape
     print(f"Time taken = {round(end_time - init_time, 2)}s to "
           f"simulate {sim_length} time steps for {num_iso} isochromats!")
 
