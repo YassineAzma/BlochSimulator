@@ -6,18 +6,11 @@ import bloch
 import numpy as np
 import sequence
 import visualise
-from scipy import optimize
 
 
 def main():
-    isochromats = np.linspace(-2000, 2000, 1000)
-    positions = np.zeros((len(isochromats), 3))
-    positions[:, 2] = np.linspace(-15e-3, 15e-3, 1000)
-    gradient_x = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
-    gradient_y = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
-    pulse_1, gradient_z = sequence.rf.foci_pulse(7.68e-3, 2000, 3.9,
-                                                 4.7e-3, 30e-3, 1e-6)
-    # pulse_1 = sequence.rf.hermite_pulse(1.5e-3, 2000, 4, [0.14, 0, 0.55, 0, 0.4], 1e-6)
+    isochromats = np.linspace(-5000, 5000, 1000)
+    pulse_1 = sequence.rf.hermite_pulse(1.5e-3, 2000, 4, [0.14, 0, 0.55, 0, 0.4], 1e-6)
     pulse_1.get_info()
     pulse_1.display()
     pulse_1.set_delta_frequency(2.89 * 42.58 * 0)
@@ -28,12 +21,6 @@ def main():
     delta_time = 1e-5
 
     init_time = time.perf_counter()
-    sel_magnetisation = bloch.simulate.selective_rot3d_matrix(t1=np.inf, t2=np.inf, position=positions,
-                                                              rf_pulse=pulse_1.get_waveform(delta_time),
-                                                              grad_x=gradient_x.get_waveform(delta_time),
-                                                              grad_y=gradient_y.get_waveform(delta_time),
-                                                              grad_z=gradient_z.get_waveform(delta_time),
-                                                              delta_time=delta_time)
     non_sel_magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats,
                                                                       rf_pulse=pulse_1.get_waveform(delta_time),
                                                                       delta_time=delta_time)
@@ -45,10 +32,6 @@ def main():
     visualise.non_selective_animation(rf_pulse=pulse_1, magnetisation=non_sel_magnetisation, df=isochromats,
                                       delta_time=delta_time,
                                       play=True, repeat=False, phase_mode=1, save_path=None)
-    visualise.selective_animation(rf_pulse=pulse_1,
-                                  grad_x=gradient_x, grad_y=gradient_y, grad_z=gradient_z,
-                                  magnetisation=sel_magnetisation, positions=positions, delta_time=delta_time,
-                                  play=True, repeat=False, phase_mode=1, save_path=None)
     # visualise.pulse_time_efficiency(isochromats, magnetisation, delta_time, True)
 
     desired_frequencies = [0.9, 1.3, 1.59, 2.02, 2.25, 2.77, 4.7, 5.31]

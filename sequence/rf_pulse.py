@@ -111,12 +111,12 @@ class RFPulse(SequenceObject):
         plt.show()
 
     def get_optimal_amplitude(self, max_b1: float, desired_range: tuple[float, float],
-                              flip_angle: float, display: bool = False) -> float:
+                              flip_angle: float, delta_time: float = 1e-4, display: bool = False) -> float:
 
         num_amplitudes = int(max_b1 / 1e-6)
         amplitudes = np.linspace(1e-6, max_b1, num_amplitudes)
 
-        initial_pulse = self.get_waveform(1e-4)
+        initial_pulse = self.get_waveform(delta_time)
         mult_num_iso = math.ceil(np.max(np.abs([value for value in desired_range])) / 500.0)
         frequency_limit = mult_num_iso * 500
 
@@ -127,7 +127,7 @@ class RFPulse(SequenceObject):
         for index, amplitude in enumerate(amplitudes):
             test_pulse = amplitude * initial_pulse
             magnetisation = non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=off_resonance,
-                                                       rf_pulse=test_pulse, delta_time=1e-4)
+                                                       rf_pulse=test_pulse, delta_time=delta_time)
             mxy_profiles[index, :] = np.abs(magnetisation[-1, :, 0] + 1j * magnetisation[-1, :, 1])
             mz_profiles[index, :] = magnetisation[-1, :, 2]
 
@@ -286,8 +286,9 @@ def foci_pulse(duration: float, bandwidth: int, empirical_factor: float,
     times = generate_times(delta_time, duration)
 
     beta = np.pi * bandwidth / empirical_factor
-    amplitude = np.where(np.cosh(beta * (times - duration / 2)) < 10.0, np.cosh(beta * (times - duration / 2)),
-                         max_gradient_strength / gradient_strength)
+    grad_factor = max_gradient_strength / gradient_strength
+    amplitude = np.where(np.cosh(beta * (times - duration / 2)) < grad_factor, np.cosh(beta * (times - duration / 2)),
+                         grad_factor)
 
     plt.plot(amplitude)
     plt.show()

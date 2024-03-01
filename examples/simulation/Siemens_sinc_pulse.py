@@ -31,4 +31,7 @@ off_resonances = np.linspace(-3000, 3000, 500)
 magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=off_resonances,
                                                           rf_pulse=pulse.get_waveform(1e-5), delta_time=1e-5)
 
+visualise.non_selective_animation(pulse, magnetisation, off_resonances, 1e-5,
+                                  play=True, repeat=True, phase_mode=0, save_path=None)
+
 visualise.pulse_time_efficiency(off_resonances, magnetisation, 1e-5, is_inversion=False)

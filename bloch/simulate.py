@@ -70,7 +70,6 @@ def selective_rot3d_matrix(t1: float, t2: float, position: np.ndarray,
     phase_rf = np.angle(rf_waveform)
 
     gradients = np.vstack((grad_x, grad_y, grad_z))
-    print(gradients.max())
     gradient_waveform = gradients * GAMMA_RAD * delta_time
     sim_length = len(rf_pulse)
 
