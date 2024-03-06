@@ -11,6 +11,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.installed.cfg
+bin/
 env/
 build/
 develop-eggs/
@@ -112,3 +114,5 @@ ENV/
 # txt files for testing
 /test_files
 
+# main
+main.py
