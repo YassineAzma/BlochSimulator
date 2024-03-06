@@ -184,7 +184,6 @@ class RFPulse(SequenceObject):
 
 
 # PULSES
-
 def rect_pulse(duration: float, delta_time: float) -> RFPulse:
     times = generate_times(delta_time, duration)
 
@@ -222,24 +221,14 @@ def gaussian_pulse(duration: float, bandwidth: float, delta_time: float,
 
 
 def hermite_pulse(duration: float, bandwidth: float, order: int, factors: list[float], delta_time: float) -> RFPulse:
-    if order < 2:
-        raise ValueError('Order must be at least 2!')
+    if order < 2 and order % 2 != 0:
+        raise ValueError('Order must be at least 2 and even!')
 
     times = generate_times(delta_time, duration)
 
-    hermite_dict = {
-        0: [1],
-        1: [0, 2],
-        2: [-2, 0, 4],
-        3: [0, -12, 0, 8],
-        4: [12, 0, -48, 0, 16],
-        5: [0, 120, 0, -160, 0, 32],
-    }
-
-    coefficients = hermite_dict.get(order)
     hermite_envelope = np.zeros_like(times)
-    for index, (factor, coefficient) in enumerate(zip(factors, coefficients)):
-        hermite_envelope += factor * coefficient * (1e3 * (times - duration / 2)) ** index
+    for index, factor in enumerate(factors):
+        hermite_envelope += factor * (1e3 * (times - duration / 2)) ** index
 
     hermite_envelope = np.clip(hermite_envelope, -1, 1)
 
@@ -248,7 +237,6 @@ def hermite_pulse(duration: float, bandwidth: float, order: int, factors: list[f
 
     gaussian_envelope = np.exp(-(np.pi * bandwidth * (times - duration / 2)) ** 2 / (4 * np.log(2)))
     magnitude = hermite_envelope * gaussian_envelope
-    magnitude /= np.max(magnitude)
 
     return RFPulse(delta_time, times, magnitude,
                    duration=duration, bandwidth=bandwidth,
@@ -308,8 +296,8 @@ def foci_pulse(duration: float, bandwidth: int, empirical_factor: float,
 
 
 def create(data: np.ndarray, delta_time: float) -> RFPulse:
-    times = generate_times(delta_time, (len(data) - 1) * delta_time)
     duration = (len(data) - 1) * delta_time
+    times = generate_times(delta_time, duration)
 
     rf_pulse = RFPulse(delta_time, times, RFPulse.normalize(data),
                        duration=duration)
