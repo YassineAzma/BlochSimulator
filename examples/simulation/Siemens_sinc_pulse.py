@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import bloch
 import sequence
 import visualise
-from utilities import extract_rf_pulse
+from export.siemens import extract_rf_pulse
 
 # NON-SELECTIVE EXCITATION EXAMPLE
 

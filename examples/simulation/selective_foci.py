@@ -9,10 +9,10 @@ num_isochromats = 500
 positions = np.zeros((num_isochromats, 3))
 positions[:, 2] = np.linspace(-15e-3, 15e-3, num_isochromats)
 
-gradient_x = sequence.gradient.rect_gradient(10.24e-3, 0, 1e-6)
-gradient_y = sequence.gradient.rect_gradient(10.24e-3, 0, 1e-6)
+gradient_x = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
+gradient_y = sequence.gradient.rect_gradient(7.68e-3, 0, 1e-6)
 grad_strength = calculate_excitation_amplitude(2000, 5e-3)
-foci_pulse, gradient_z = sequence.rf.foci_pulse(10.24e-3, 2000, 2.5,
+foci_pulse, gradient_z = sequence.rf.foci_pulse(7.68e-3, 2000, 3.9,
                                                 grad_strength, 25e-3, 1e-6)
 foci_pulse.get_info()
 foci_pulse.display()
