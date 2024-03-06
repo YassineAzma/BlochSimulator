@@ -31,7 +31,8 @@ class SequenceObject:
     @staticmethod
     def resample(old_dt: float, new_dt: float, data: np.ndarray) -> np.ndarray:
         max_length = len(data)
-        new_length = round((max_length - 1) * old_dt / new_dt) + 1
+        new_length = round(max_length * old_dt / new_dt) + 1
+
         old_time = np.linspace(0, max_length, max_length, dtype=np.int64) * old_dt
         new_time = np.linspace(0, max_length, new_length, dtype=np.int64) * old_dt
 

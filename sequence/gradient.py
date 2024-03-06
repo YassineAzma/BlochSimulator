@@ -55,6 +55,15 @@ class Gradient(SequenceObject):
         else:
             return self.amplitude * temp_waveform
 
+    def display(self, title: str = None):
+        plt.plot(1e3 * self.times, self.waveform)
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Normalised Amplitude')
+        plt.grid()
+
+        plt.suptitle(title if title is not None else self.additional_info.get("title"))
+        plt.show()
+
 
 def calculate_excitation_amplitude(bandwidth: float, slice_thickness: float) -> float:
     return bandwidth / (GAMMA * slice_thickness)
@@ -104,7 +113,9 @@ def trapezium_gradient(ramp_time: float, duration: float, amplitude: float,
 
 
 def create(data: np.ndarray, delta_time: float) -> Gradient:
-    times = generate_times(delta_time, (len(data) - 1) * delta_time)
+    duration = (len(data) - 1) * delta_time
+    times = generate_times(delta_time, duration)
+
     gradient = Gradient(delta_time, times, data)
 
     return gradient
