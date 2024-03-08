@@ -15,8 +15,7 @@ class SequenceObject:
         raise NotImplementedError
 
     def _append(self, other_object, delay: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-        total_length = round((self.times.max() + delay + other_object.times.max()) / self.delta_time)
-        new_times = np.linspace(0, total_length, total_length + 1, dtype=np.int64) / 1.0e6
+        new_times = generate_times(self.delta_time, self.times.max() + delay + other_object.times.max())
 
         length_of_delay = int(delay / 1e-6)
         padding = np.zeros(length_of_delay)
