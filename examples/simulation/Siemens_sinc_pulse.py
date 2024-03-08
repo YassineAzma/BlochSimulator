@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import bloch
 import sequence
 import visualise
-from export.siemens import extract_rf_pulse
+from vendor.siemens import extract_rf_pulse
 
 # NON-SELECTIVE EXCITATION EXAMPLE
 
@@ -32,6 +32,4 @@ magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, 
                                                           rf_pulse=pulse.get_waveform(1e-5), delta_time=1e-5)
 
 visualise.non_selective_animation(pulse, magnetisation, off_resonances, 1e-5,
-                                  play=True, repeat=True, phase_mode=0, save_path=None)
-
-visualise.pulse_time_efficiency(off_resonances, magnetisation, 1e-5, is_inversion=False)
+                                  play=True, repeat=False, phase_mode=0, save_path=None)

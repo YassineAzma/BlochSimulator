@@ -75,7 +75,7 @@ def extract_gradients(file_path: str, save: bool = False) -> np.ndarray:
     return gradients
 
 
-def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: str, comment: str = None) -> None:
+def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: str, ref_grad: float, comment: str = None) -> None:
     waveform = pulse.get_waveform(1e-6)[1:-1]
     normalized_waveform = waveform / np.abs(waveform).max()
 
@@ -87,7 +87,7 @@ def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: s
         # Write header information
         file.write(f'PULSENAME: {family_name}.{pulse_name}\n')
         file.write(f'COMMENT: {comment}\n')
-        file.write(f'REFGRAD: 1.000000000\n')
+        file.write(f'REFGRAD: {1000*ref_grad}\n')
         file.write(f'MINSLICE: 1.000000000\n')
         file.write(f'MAXSLICE: 400.000000000\n')
         file.write(f'AMPINT: {amplitude_integral}\n')
@@ -98,7 +98,3 @@ def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: s
             magnitude = np.abs(pulse_sample)
             phase = np.angle(pulse_sample)
             file.write(f'{round(magnitude, 9)} {round(phase, 9)} \t ; ({index}) \n')
-
-
-test_pulse = sequence.rf_pulse.sinc_pulse(2e-3, 2400, 1e-6, False)
-# pulse_to_siemens(test_pulse, 'Yassine_SLR', 'test_pulse')
