@@ -21,22 +21,23 @@ class RFPulse(SequenceObject):
         self.amplitude = 1
         self.delta_frequency = 0
 
-    def __add__(self, other_pulse):
+    def __add__(self, other_pulse) -> 'RFPulse':
         comb_waveform = self.get_waveform() + other_pulse.get_waveform()
         comb_waveform = self.normalize(comb_waveform)
 
         return RFPulse(self.delta_time, self.times, comb_waveform)
 
-    def __sub__(self, other_pulse):
+    def __sub__(self, other_pulse) -> 'RFPulse':
         comb_waveform = self.get_waveform() - other_pulse.get_waveform()
         comb_waveform = self.normalize(comb_waveform)
 
         return RFPulse(self.delta_time, self.times, comb_waveform)
 
-    def append(self, other_pulse, delay: float = 0.0):
+    def append(self, other_pulse, delay: float = 0.0) -> None:
         new_times, comb_data = self._append(other_pulse, delay)
 
-        return RFPulse(self.delta_time, new_times, comb_data)
+        self.times = new_times
+        self.waveform = comb_data
 
     def magnitude(self, new_delta_time: float = None) -> np.ndarray:
         return np.abs(self.get_waveform(new_delta_time))
@@ -270,7 +271,6 @@ def hypsec_pulse(duration: float, bandwidth: int,
 def foci_pulse(duration: float, bandwidth: int, empirical_factor: float,
                gradient_strength: float, max_gradient_strength: float,
                delta_time: float) -> tuple[RFPulse, Gradient]:
-
     times = generate_times(delta_time, duration)
 
     beta = np.pi * bandwidth / empirical_factor
@@ -303,3 +303,23 @@ def create(data: np.ndarray, delta_time: float) -> RFPulse:
                        duration=duration)
 
     return rf_pulse
+
+
+def get_full_width_arbitrary(off_resonance: np.ndarray, magnetisation: np.ndarray,
+                             threshold: float = 0.5, profile: str = 'excitation') -> float:
+    if profile == 'excitation':
+        excitation_profile = np.abs(magnetisation[-1, :, 0] + 1j * magnetisation[-1, :, 1])
+    elif profile == 'inversion':
+        excitation_profile = -magnetisation[-1, :, 2]
+    else:
+        raise ValueError("Profile must be 'excitation' or 'inversion'")
+
+    indices = np.where(excitation_profile > threshold)[0]
+    if len(indices) == 0:
+        return 0
+    else:
+        return off_resonance[indices[-1]].item() - off_resonance[indices[0]].item()
+
+
+def get_full_width_half_maximum(off_resonance: np.ndarray, magnetisation: np.ndarray) -> float:
+    return get_full_width_arbitrary(off_resonance, magnetisation, 0.5)

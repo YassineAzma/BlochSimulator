@@ -26,10 +26,11 @@ class Gradient(SequenceObject):
 
         return Gradient(self.delta_time, self.times, comb_waveform)
 
-    def append(self, other_pulse, delay: float = 0.0):
+    def append(self, other_pulse, delay: float = 0.0) -> None:
         new_times, comb_data = self._append(other_pulse, delay)
 
-        return Gradient(self.delta_time, new_times, comb_data)
+        self.times = new_times
+        self.waveform = comb_data
 
     def slew_rate(self, new_delta_time: float = None):
         if new_delta_time:
@@ -70,20 +71,19 @@ def calculate_excitation_amplitude(bandwidth: float, slice_thickness: float) -> 
 
 
 def apply_eddy_currents(gradient: Gradient, amplitudes: np.ndarray,
-                        rate_constants: np.ndarray, new_delta_time: float = None) -> list[Gradient]:
-    times = gradient.get_times(new_delta_time) if new_delta_time else gradient.get_times()
-    temp_waveform = gradient.get_waveform(new_delta_time) if new_delta_time else gradient.get_waveform()
-    slew_rate = gradient.slew_rate(new_delta_time) * (new_delta_time if new_delta_time else gradient.delta_time)
-    delta_time = new_delta_time if new_delta_time else gradient.delta_time
+                        rate_constants: np.ndarray) -> list[Gradient]:
+    times = gradient.get_times()
+    temp_waveform = gradient.get_waveform()
+    slew_rate = gradient.slew_rate() * gradient.delta_time
 
     decay = np.sum(amplitudes[:, None] * np.exp(-rate_constants[:, None] * times), axis=0)
     eddy_waveform = np.convolve(-slew_rate, decay)
 
-    new_times = generate_times(delta_time, (len(eddy_waveform) - 1) * delta_time)
+    new_times = generate_times(gradient.delta_time, (len(eddy_waveform) - 1) * gradient.delta_time)
     padded_waveform = np.concatenate([temp_waveform, np.zeros(len(eddy_waveform) - len(temp_waveform))])
 
     corrupted_gradient = Gradient(gradient.delta_time, new_times, padded_waveform + eddy_waveform)
-    eddy_gradient = Gradient(new_delta_time, new_times, eddy_waveform)
+    eddy_gradient = Gradient(gradient.delta_time, new_times, eddy_waveform)
     preemphasised_gradient = Gradient(gradient.delta_time, new_times, padded_waveform - eddy_waveform)
 
     return [corrupted_gradient, eddy_gradient, preemphasised_gradient]
@@ -112,6 +112,53 @@ def trapezium_gradient(ramp_time: float, duration: float, amplitude: float,
     return Gradient(delta_time, times, gradient)
 
 
+def periodic_trapezium_gradient(ramp_time: float, duration: float, amplitude: float,
+                                num_lobes: int, delta_time: float) -> Gradient:
+    desired_gradient = trapezium_gradient(ramp_time, duration, amplitude, delta_time)
+    polarity_reversed_gradient = trapezium_gradient(ramp_time, duration, -amplitude, delta_time)
+
+    gradient_lobes = [desired_gradient if i % 2 == 0 else polarity_reversed_gradient
+                      for i in range(num_lobes)]
+
+    final_gradient = Gradient(delta_time, desired_gradient.get_times(), desired_gradient.get_waveform())
+    for lobe in gradient_lobes[1:]:
+        final_gradient.append(lobe)
+
+    return final_gradient
+
+
+def sinusoidal_gradient(ramp_time: float, duration: float, amplitude: float,
+                        delta_time: float) -> Gradient:
+    times = generate_times(delta_time, 2 * ramp_time + duration)
+
+    ramp_length = round(ramp_time / delta_time)
+    flat_length = round(duration / delta_time)
+
+    rise_ramp = np.sin(np.linspace(0, np.pi / 2, ramp_length)) * amplitude
+    flat_gradient = np.full(flat_length + 1, amplitude)
+    fall_ramp = np.sin(np.linspace(np.pi / 2, 0, ramp_length)) * amplitude
+
+    gradient = np.concatenate([rise_ramp, flat_gradient, fall_ramp])
+
+    return Gradient(delta_time, times, gradient)
+
+
+def periodic_sinusoidal_gradient(ramp_time: float, duration: float, amplitude: float,
+                                 num_lobes: int, delta_time: float) -> Gradient:
+
+    desired_gradient = sinusoidal_gradient(ramp_time, duration, amplitude, delta_time)
+    polarity_reversed_gradient = sinusoidal_gradient(ramp_time, duration, -amplitude, delta_time)
+
+    gradient_lobes = [desired_gradient if i % 2 == 0 else polarity_reversed_gradient
+                      for i in range(num_lobes)]
+
+    final_gradient = Gradient(delta_time, desired_gradient.get_times(), desired_gradient.get_waveform())
+    for lobe in gradient_lobes[1:]:
+        final_gradient.append(lobe)
+
+    return final_gradient
+
+
 def create(data: np.ndarray, delta_time: float) -> Gradient:
     duration = (len(data) - 1) * delta_time
     times = generate_times(delta_time, duration)
@@ -119,3 +166,9 @@ def create(data: np.ndarray, delta_time: float) -> Gradient:
     gradient = Gradient(delta_time, times, data)
 
     return gradient
+
+
+test = periodic_sinusoidal_gradient(0.4e-3, 0e-3, 20e-3, 4, 1e-6)
+# test = periodic_trapezium_gradient(0.4e-3, 3e-3, 10e-3, 6, 1e-6)
+# test, eddy, pre = apply_eddy_currents(test, np.array([0.05, 0.02, 0.01]), np.array([1250, 500, 100]))
+test.display()
