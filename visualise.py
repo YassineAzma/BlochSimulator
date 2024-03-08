@@ -1,10 +1,11 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 from matplotlib.animation import FuncAnimation
 
 from sequence import rf, gradient
-
 
 def non_selective_animation(rf_pulse: rf.RFPulse, magnetisation: np.ndarray,
                             df: np.ndarray, delta_time: float,

@@ -166,9 +166,3 @@ def create(data: np.ndarray, delta_time: float) -> Gradient:
     gradient = Gradient(delta_time, times, data)
 
     return gradient
-
-
-test = periodic_sinusoidal_gradient(0.4e-3, 0e-3, 20e-3, 4, 1e-6)
-# test = periodic_trapezium_gradient(0.4e-3, 3e-3, 10e-3, 6, 1e-6)
-# test, eddy, pre = apply_eddy_currents(test, np.array([0.05, 0.02, 0.01]), np.array([1250, 500, 100]))
-test.display()
