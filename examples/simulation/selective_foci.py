@@ -24,18 +24,18 @@ foci_pulse.set_delta_frequency(42.58 * 2.89 * 0)
 delta_time = 1e-5
 
 init_time = time.perf_counter()
-sel_magnetisation = bloch.simulate.selective_rot3d_matrix(t1=np.inf, t2=np.inf, position=positions,
-                                                          rf_pulse=foci_pulse.get_waveform(delta_time),
-                                                          grad_x=gradient_x.get_waveform(delta_time),
-                                                          grad_y=gradient_y.get_waveform(delta_time),
-                                                          grad_z=gradient_z.get_waveform(delta_time),
-                                                          delta_time=delta_time)
+sel_magnetisation = bloch.simulate.spatial_selective_rot3d_matrix(t1=np.inf, t2=np.inf, position=positions,
+                                                                  rf_pulse=foci_pulse.get_waveform(delta_time),
+                                                                  grad_x=gradient_x.get_waveform(delta_time),
+                                                                  grad_y=gradient_y.get_waveform(delta_time),
+                                                                  grad_z=gradient_z.get_waveform(delta_time),
+                                                                  delta_time=delta_time)
 end_time = time.perf_counter()
 sim_length, num_iso, _ = sel_magnetisation.shape
 print(f"Time taken = {round(end_time - init_time, 2)}s to "
       f"simulate {sim_length} time steps for {num_iso} isochromats!")
 
-visualise.selective_animation(rf_pulse=foci_pulse,
-                              grad_x=gradient_x, grad_y=gradient_y, grad_z=gradient_z,
-                              magnetisation=sel_magnetisation, positions=positions, delta_time=delta_time,
-                              play=True, repeat=False, phase_mode=1, save_path=None)
+visualise.animate(magnetisation=sel_magnetisation, delta_time=delta_time, simulation_style='1d_selective',
+                  positions=positions, position_axis=2, rf_pulse=foci_pulse,
+                  grad_x=gradient_x, grad_y=gradient_y, grad_z=gradient_z,
+                  repeat=False, save_path=None)
