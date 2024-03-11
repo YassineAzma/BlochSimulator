@@ -2,7 +2,6 @@ from typing import Optional
 
 import numpy as np
 
-import sequence.rf_pulse
 from sequence.rf_pulse import RFPulse
 
 
@@ -77,7 +76,7 @@ def extract_gradients(file_path: str, save: bool = False) -> np.ndarray:
 
 def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: str, ref_grad: float, comment: str = None) -> None:
     waveform = pulse.get_waveform(1e-6)[1:-1]
-    normalized_waveform = waveform / np.abs(waveform).max()
+    normalized_waveform = np.abs(waveform) / np.abs(waveform).max()
 
     amplitude_integral = np.sqrt(np.sum(normalized_waveform.real) ** 2 +
                                  np.sum(normalized_waveform.imag) ** 2)
