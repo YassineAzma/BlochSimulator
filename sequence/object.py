@@ -23,6 +23,21 @@ class SequenceObject:
 
         return new_times, comb_data
 
+    def zero_pad(self, delay: float, is_after: bool = True):
+        new_times = generate_times(self.delta_time, self.get_times().max() + delay)
+
+        length_of_delay = int(delay / 1e-6)
+        padding = np.zeros(length_of_delay)
+        if is_after:
+            comb_data = np.concatenate([self.get_waveform(), padding])
+        else:
+            comb_data = np.concatenate([padding, self.get_waveform()])
+
+        self.times = new_times
+        self.waveform = comb_data / self.amplitude
+
+
+
     @staticmethod
     def normalize(data: np.ndarray):
         return data / np.max(np.abs(data))
