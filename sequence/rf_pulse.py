@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import pprint
 
@@ -5,8 +7,25 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from bloch.simulate import non_selective_rot3d_matrix
+from constants import GAMMA_RAD
 from sequence.gradient import Gradient
 from sequence.object import SequenceObject, generate_times
+
+
+def merge(rf_pulses: list[RFPulse], delta_time: float = 1e-6) -> RFPulse:
+    for pulse in rf_pulses:
+        if not isinstance(pulse, RFPulse):
+            raise ValueError("All pulses must be of type RFPulse!")
+
+    total_duration = rf_pulses[0].get_times().max()
+    total_waveform = rf_pulses[0].get_waveform()
+    for pulse in rf_pulses[1:]:
+        total_duration += pulse.get_times()[1:].max()
+        total_waveform = np.concatenate((total_waveform, pulse.get_waveform()[1:]))
+
+    times = generate_times(delta_time, total_duration)
+
+    return RFPulse(delta_time, times, total_waveform)
 
 
 class RFPulse(SequenceObject):
@@ -33,11 +52,16 @@ class RFPulse(SequenceObject):
 
         return RFPulse(self.delta_time, self.times, comb_waveform)
 
-    def append(self, other_pulse, delay: float = 0.0) -> None:
-        new_times, comb_data = self._append(other_pulse, delay)
+    def append(self, other_pulse: RFPulse | list[RFPulse], delay: float = 0.0) -> None:
+        if not isinstance(other_pulse, list):
+            other_pulse = [other_pulse]
 
-        self.times = new_times
-        self.waveform = comb_data
+        for pulse in other_pulse:
+            new_times, comb_data = self._append(pulse, delay)
+
+            self.times = new_times
+            self.waveform = comb_data
+            self.amplitude = 1
 
     def magnitude(self, new_delta_time: float = None) -> np.ndarray:
         return np.abs(self.get_waveform(new_delta_time))
@@ -111,13 +135,19 @@ class RFPulse(SequenceObject):
         plt.suptitle(title if title is not None else self.additional_info.get("title"))
         plt.show()
 
+    def get_flip_angle(self):
+        return np.sum(GAMMA_RAD * self.get_waveform() * self.delta_time).real
+
+    def get_exact_amplitude(self, flip_angle: float) -> float:
+        return self.amplitude * flip_angle / self.get_flip_angle()
+
     def get_optimal_amplitude(self, max_b1: float, desired_range: tuple[float, float],
                               flip_angle: float, delta_time: float = 1e-4, display: bool = False) -> float:
 
         num_amplitudes = int(max_b1 / 1e-6)
         amplitudes = np.linspace(1e-6, max_b1, num_amplitudes)
 
-        initial_pulse = self.get_waveform(delta_time)
+        initial_pulse = self.get_waveform(delta_time) / self.amplitude
         mult_num_iso = math.ceil(np.max(np.abs([value for value in desired_range])) / 500.0)
         frequency_limit = mult_num_iso * 500
 
@@ -142,6 +172,9 @@ class RFPulse(SequenceObject):
 
         inversion_score = np.sum((weighting * (mz_profiles - mz_desired)) ** 2, axis=1)
         excitation_score = np.sum((weighting * (mxy_profiles - mxy_desired)) ** 2, axis=1)
+
+        if flip_angle <= np.pi / 2:
+            excitation_score *= 4
 
         ideal_amplitude = amplitudes[np.argmin(excitation_score + inversion_score)].item()
 
@@ -194,13 +227,32 @@ def rect_pulse(duration: float, delta_time: float) -> RFPulse:
                    duration=duration)
 
 
+def binomial_pulse(subpulse_duration: float, interpulse_delay: float, binomial_order: int,
+                   delta_time: float, flip_angle: float) -> RFPulse:
+    binomial_coefficients = [math.comb(binomial_order, k) for k in range(binomial_order + 1)]
+
+    pulses = []
+    for index, coeff in enumerate(binomial_coefficients):
+        pulse = rect_pulse(subpulse_duration, delta_time)
+        if index != len(binomial_coefficients) - 1:
+            pulse.zero_pad(interpulse_delay)
+
+        amplitude = pulse.get_exact_amplitude(coeff / sum(binomial_coefficients) * flip_angle)
+        pulse.set_amplitude(amplitude)
+        pulses.append(pulse)
+
+    binomial_pulse = merge(pulses, delta_time=delta_time)
+
+    return binomial_pulse
+
+
 # Shaped Pulses
 def sinc_pulse(duration: float, bandwidth: float, delta_time: float,
                hamming: bool = False) -> RFPulse:
     times = generate_times(delta_time, duration)
 
     hamming_filter = (1 + np.cos(2 * np.pi * (times - duration / 2) / duration)) / 2 if hamming else 1
-    magnitude = np.sinc(np.pi * bandwidth * (times - duration / 2)) * hamming_filter
+    magnitude = np.sinc(bandwidth * (times - duration / 2)) * hamming_filter
 
     return RFPulse(delta_time, times, magnitude,
                    duration=duration, bandwidth=bandwidth,
