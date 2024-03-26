@@ -37,10 +37,10 @@ def create_waveform_frames(titles: list, times: list, waveforms: list):
 
     for i in range(len(waveforms)):
         axes[i, 0].plot(1e3 * times[i], waveforms[i], lw=0.9, color='b')
-        axes[i, 0].set_title(titles[i], x=-0.1, y=0.35, rotation=0, ha='right', fontsize=9)
+        axes[i, 0].set_title(titles[i], x=-0.1, y=0.35, rotation=0, ha='right', fontsize=11)
         axes[i, 0].axhline(0, lw=0.375, color='k')
         if i == len(waveforms) - 1:
-            axes[i, 0].set_xlabel('Time (ms)')
+            axes[i, 0].set_xlabel('Time (ms)', fontsize=12)
         else:
             axes[i, 0].set_xticks([])
 
@@ -52,8 +52,9 @@ def create_waveform_frames(titles: list, times: list, waveforms: list):
 def create_magnetisation_frame(mxy: np.ndarray, mz: np.ndarray, x_axis: str, x_data: np.ndarray):
     ax = plt.subplot(1, 2, 2)
     if x_axis == 'df':
-        pass
+        x_label = 'Isochromat Frequency (Hz)'
     elif x_axis == 'pos':
+        x_label = 'Position (mm)'
         x_data *= 1e3
     else:
         raise ValueError("x_axis must be 'df' or 'pos'")
@@ -62,12 +63,25 @@ def create_magnetisation_frame(mxy: np.ndarray, mz: np.ndarray, x_axis: str, x_d
     mz_line, = ax.plot(x_data, mz[0, :], lw=2, color='r', label='$M_z$')
     ax.grid()
 
-    ax.set_xlabel('Position (mm)') if x_axis == 'pos' else ax.set_xlabel('Frequency (Hz)')
+    ax.set_xlabel(x_label, fontsize=12)
     ax.set_ylim([-1.1, 1.1])
     ax.legend()
     ax.set_title('Magnetisation')
 
     return mxy_line, mz_line
+
+
+def create_progress_lines(num_lines: int, times: list, axes: np.ndarray[plt.Axes]) -> list:
+    progress_lines = []
+    for i in range(num_lines):
+        progress_line = axes[i, 0].axvline(1e3 * times[i][0], lw=1, color='g')
+        progress_lines.append(progress_line)
+
+    return progress_lines
+
+
+def save_animation(anim: FuncAnimation, save_path: str):
+    anim.save(save_path, fps=60, codec='h264', dpi=300)
 
 
 def animate(magnetisation: np.ndarray, delta_time: float, simulation_style: str,
@@ -78,26 +92,29 @@ def animate(magnetisation: np.ndarray, delta_time: float, simulation_style: str,
             grad_x: Optional[gradient.Gradient] = None,
             grad_y: Optional[gradient.Gradient] = None,
             grad_z: Optional[gradient.Gradient] = None,
-            repeat: bool = False, save_path: str = None):
+            repeat: bool = False, num_frames: int = 500, save_path: str = None):
     if simulation_style == 'relaxation':
-        pass
+        anim = None
     elif simulation_style == 'non_selective':
-        non_selective_animation(magnetisation, delta_time, off_resonances, rf_pulse, repeat, save_path)
+        anim = non_selective_animation(magnetisation, delta_time, off_resonances, rf_pulse, repeat, num_frames)
     elif simulation_style == '1d_selective':
-        slice_selective_animation(magnetisation, delta_time, position_axis, positions,
-                                  rf_pulse, grad_x, grad_y, grad_z, repeat, save_path)
+        anim = slice_selective_animation(magnetisation, delta_time, position_axis, positions,
+                                         rf_pulse, grad_x, grad_y, grad_z, repeat, num_frames)
     elif simulation_style == '2d_selective':
-        pass
+        anim = None
     elif simulation_style == 'spectral_spatial':
-        spectral_spatial_animation(magnetisation, delta_time, off_resonances, position_axis, positions,
-                                   rf_pulse, grad_x, grad_y, grad_z, repeat, save_path)
+        anim = spectral_spatial_animation(magnetisation, delta_time, off_resonances, position_axis, positions,
+                                          rf_pulse, grad_x, grad_y, grad_z, repeat, num_frames)
     else:
         raise ValueError("Simulation style invalid! "
                          "Must be 'relaxation', non_selective', '1d_selective', '2d_selective' or 'spectral_spatial'")
 
+    if save_path is not None:
+        save_animation(anim, save_path)
+
 
 def non_selective_animation(magnetisation: np.ndarray, delta_time: float, off_resonances: np.ndarray,
-                            rf_pulse: rf.RFPulse, repeat: bool = True, save_path: str = None):
+                            rf_pulse: rf.RFPulse, repeat: bool = True, num_frames: int = 500, save_path: str = None):
     titles, times, waveforms = get_waveform_data(rf_pulse, None, None, None, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
@@ -107,17 +124,18 @@ def non_selective_animation(magnetisation: np.ndarray, delta_time: float, off_re
 
     mxy_line, mz_line = create_magnetisation_frame(mxy, mz, 'df', off_resonances)
 
-    num_frames = 800
+    progress_lines = create_progress_lines(len(waveforms), times, axes)
+
+    total_length = magnetisation.shape[0]
+    frame_indices = np.linspace(0, total_length, num_frames, endpoint=False)
+    nearest_times = np.floor(frame_indices) * delta_time
 
     def update(frame):
-        total_time = magnetisation.shape[0] * delta_time
-        nearest_time = frame * total_time / num_frames
+        nearest_time = nearest_times[frame]
         nearest_frame = np.argmin(np.abs(nearest_time - rf_pulse.get_times(delta_time)))
 
-        progress_lines = []
-        for i in range(len(waveforms)):
-            progress_line = axes[i, 0].axvline(1e3 * nearest_time, lw=1, color='g')
-            progress_lines.append(progress_line)
+        for line in progress_lines:
+            line.set_xdata(1e3 * nearest_time)
 
         mxy_line.set_ydata(mxy[nearest_frame, :])
         mz_line.set_ydata(mz[nearest_frame, :])
@@ -128,12 +146,14 @@ def non_selective_animation(magnetisation: np.ndarray, delta_time: float, off_re
                          blit=True, repeat=repeat)
     plt.show()
 
+    return anim
+
 
 def slice_selective_animation(magnetisation: np.ndarray, delta_time: float, axis: int, positions: np.ndarray,
                               rf_pulse: rf.RFPulse,
                               grad_x: Optional[gradient.Gradient], grad_y: Optional[gradient.Gradient],
                               grad_z: Optional[gradient.Gradient],
-                              repeat: bool = True, save_path: str = None):
+                              repeat: bool = True, num_frames: int = 500, save_path: str = None):
     titles, times, waveforms = get_waveform_data(rf_pulse, grad_x, grad_y, grad_z, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
@@ -143,17 +163,18 @@ def slice_selective_animation(magnetisation: np.ndarray, delta_time: float, axis
     slice_positions = positions[:, axis]
     mxy_line, mz_line = create_magnetisation_frame(mxy, mz, 'pos', slice_positions)
 
-    num_frames = 800
+    progress_lines = create_progress_lines(len(waveforms), times, axes)
+
+    total_length = magnetisation.shape[0]
+    frame_indices = np.linspace(0, total_length, num_frames, endpoint=False)
+    nearest_times = np.floor(frame_indices) * delta_time
 
     def update(frame):
-        total_time = magnetisation.shape[0] * delta_time
-        nearest_time = frame * total_time / num_frames
+        nearest_time = nearest_times[frame]
         nearest_frame = np.argmin(np.abs(nearest_time - rf_pulse.get_times(delta_time)))
 
-        progress_lines = []
-        for i in range(len(waveforms)):
-            progress_line = axes[i, 0].axvline(1e3 * nearest_time, lw=1, color='g')
-            progress_lines.append(progress_line)
+        for line in progress_lines:
+            line.set_xdata(1e3 * nearest_time)
 
         mxy_line.set_ydata(mxy[nearest_frame, :])
         mz_line.set_ydata(mz[nearest_frame, :])
@@ -164,13 +185,15 @@ def slice_selective_animation(magnetisation: np.ndarray, delta_time: float, axis
                          blit=True, repeat=repeat)
     plt.show()
 
+    return anim
+
 
 def spectral_spatial_animation(magnetisation: np.ndarray, delta_time: float, off_resonances: np.ndarray,
                                axis: int, positions: np.ndarray,
                                rf_pulse: rf.RFPulse,
                                grad_x: Optional[gradient.Gradient], grad_y: Optional[gradient.Gradient],
                                grad_z: Optional[gradient.Gradient],
-                               repeat: bool = True, save_path: str = None):
+                               repeat: bool = True, num_frames: int = 500, save_path: str = None):
     titles, times, waveforms = get_waveform_data(rf_pulse, grad_x, grad_y, grad_z, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
@@ -180,29 +203,36 @@ def spectral_spatial_animation(magnetisation: np.ndarray, delta_time: float, off
     mz = get_mz(magnetisation)
     mz = mz.reshape(magnetisation.shape[0], len(positions[:, axis]), len(off_resonances))
 
+    plot_extent = (min(off_resonances), max(off_resonances),
+                   1e3 * np.min(positions[:, axis]), 1e3 * np.max(positions[:, axis]))
     plt.subplot(2, 2, 2)
-    mxy_distribution = plt.imshow(mxy[0, :, :], vmin=-1, vmax=1, cmap='jet',
-                                  aspect='auto', extent=(min(off_resonances), max(off_resonances),
-                                                         1e3 * np.min(positions[:, axis]),
-                                                         1e3 * np.max(positions[:, axis])))
+    mxy_distribution = plt.imshow(mxy[0, :, :], vmin=0, vmax=1, cmap='viridis',
+                                  aspect='auto', extent=plot_extent)
+    cbar = plt.colorbar()
+    cbar.set_label('$M_{xy}$', rotation=0)
+    plt.gca().set_xticklabels([])
 
     plt.subplot(2, 2, 4)
-    mz_distribution = plt.imshow(mz[0, :, :], vmin=-1, vmax=1, cmap='jet',
-                                 aspect='auto', extent=(min(off_resonances), max(off_resonances),
-                                                        1e3 * np.min(positions[:, axis]),
-                                                        1e3 * np.max(positions[:, axis])))
+    mz_distribution = plt.imshow(mz[0, :, :], vmin=-1, vmax=1, cmap='viridis',
+                                 aspect='auto', extent=plot_extent)
+    cbar = plt.colorbar()
+    cbar.set_label('$M_{z}$', rotation=0)
+    plt.subplots_adjust(hspace=0.1)
+    plt.xlabel('Isochromat Frequency (Hz)', fontsize=12)
+    fig.text(0.5, 0.5, 'Position (mm)', va='center', rotation='vertical', fontsize=12)
 
-    num_frames = 800
+    progress_lines = create_progress_lines(len(waveforms), times, axes)
+
+    total_length = magnetisation.shape[0]
+    frame_indices = np.linspace(0, total_length, num_frames, endpoint=False)
+    nearest_times = np.floor(frame_indices) * delta_time
 
     def update(frame):
-        total_time = magnetisation.shape[0] * delta_time
-        nearest_time = frame * total_time / num_frames
+        nearest_time = nearest_times[frame]
         nearest_frame = np.argmin(np.abs(nearest_time - rf_pulse.get_times(delta_time)))
 
-        progress_lines = []
-        for i in range(len(waveforms)):
-            progress_line = axes[i, 0].axvline(1e3 * nearest_time, lw=1, color='g')
-            progress_lines.append(progress_line)
+        for line in progress_lines:
+            line.set_xdata(1e3 * nearest_time)
 
         mxy_distribution.set_data(mxy[nearest_frame, :, :])
         mz_distribution.set_data(mz[nearest_frame, :, :])
@@ -213,3 +243,5 @@ def spectral_spatial_animation(magnetisation: np.ndarray, delta_time: float, off
                          blit=True, repeat=repeat)
 
     plt.show()
+
+    return anim
