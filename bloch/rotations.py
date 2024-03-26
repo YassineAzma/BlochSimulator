@@ -58,7 +58,8 @@ def arb_rot(phi: float, theta: float) -> np.ndarray:
 
 
 @numba.njit(complex128[:, ::1](complex128[:, ::1], float64, float64[::1]), cache=True)
-def quaternion_rotation(quaternion: np.ndarray, theta: float, axis_norm: np.ndarray = np.array([1.0, 0.0, 0])) -> np.ndarray:
+def quaternion_rotation(quaternion: np.ndarray, theta: float,
+                        axis_norm: np.ndarray = np.array([1.0, 0.0, 0])) -> np.ndarray:
     u_dot_sigma = axis_norm[0] * PAULI_X + axis_norm[1] * PAULI_Y + axis_norm[2] * PAULI_Z
     rotation = np.identity(2) * np.cos(theta / 2) + 1j * u_dot_sigma * np.sin(theta / 2)
 
