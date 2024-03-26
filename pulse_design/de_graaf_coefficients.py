@@ -121,7 +121,7 @@ def generate_de_graaf_pulse(pulse_type: str, r_value: int, duration: float) -> R
     return rf_object
 
 
-test = generate_de_graaf_pulse('Linear', 18, 4e-3)
+test = generate_de_graaf_pulse('Linear', 12, 1.2e-3)
 amplitude = test.get_optimal_amplitude(30e-6, (-500.0, 500.0), np.pi / 2, display=True)
 test.set_amplitude(amplitude)
 
@@ -129,5 +129,4 @@ isochromats = np.linspace(-2500, 2500, 500)
 magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats,
                                                           rf_pulse=test.get_waveform(1e-5), delta_time=1e-5)
 
-animation = visualise.non_selective_animation(test, magnetisation, isochromats, 1e-5, play=True,
-                                              phase_mode=0, save_path=None)
+animation = visualise.non_selective_animation(magnetisation, isochromats, 1e-5, test, save_path=None)
