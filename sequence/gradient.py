@@ -57,7 +57,7 @@ class Gradient(SequenceObject):
             return self.amplitude * temp_waveform
 
     def display(self, title: str = None):
-        plt.plot(1e3 * self.times, self.waveform)
+        plt.plot(1e3 * self.times, self.get_waveform() / self.amplitude)
         plt.xlabel('Time (ms)')
         plt.ylabel('Normalised Amplitude')
         plt.grid()
@@ -145,7 +145,6 @@ def sinusoidal_gradient(ramp_time: float, duration: float, amplitude: float,
 
 def periodic_sinusoidal_gradient(ramp_time: float, duration: float, amplitude: float,
                                  num_lobes: int, delta_time: float) -> Gradient:
-
     desired_gradient = sinusoidal_gradient(ramp_time, duration, amplitude, delta_time)
     polarity_reversed_gradient = sinusoidal_gradient(ramp_time, duration, -amplitude, delta_time)
 
@@ -159,6 +158,24 @@ def periodic_sinusoidal_gradient(ramp_time: float, duration: float, amplitude: f
     return final_gradient
 
 
+def constant_angle_spiral_gradients(duration: float, amplitude: float, cycles: float, delta_time: float = 1e-6):
+    times = generate_times(delta_time, duration)
+
+    gx = -(1 / (duration * GAMMA)) * (2 * np.pi * cycles * (1 - times / duration)
+                                      * np.sin(2 * np.pi * cycles * times / duration) +
+                                      np.cos(2 * np.pi * cycles * times / duration))
+
+    gx = amplitude * gx / np.abs(gx).max()
+
+    gy = 1 / (duration * GAMMA) * (2 * np.pi * cycles * (1 - times / duration)
+                                   * np.cos(2 * np.pi * cycles * times / duration) -
+                                   np.sin(2 * np.pi * cycles * times / duration))
+
+    gy = amplitude * gy / np.abs(gy).max()
+
+    return Gradient(delta_time, times, gx), Gradient(delta_time, times, gy)
+
+
 def create(data: np.ndarray, delta_time: float) -> Gradient:
     duration = (len(data) - 1) * delta_time
     times = generate_times(delta_time, duration)
@@ -166,3 +183,11 @@ def create(data: np.ndarray, delta_time: float) -> Gradient:
     gradient = Gradient(delta_time, times, data)
 
     return gradient
+
+
+def gradient_to_spatial_frequency(gradient: Gradient, delta_time: float = 1e-6) -> np.ndarray:
+    gradient_waveform = gradient.get_waveform(delta_time)
+
+    spatial_frequency = GAMMA * np.cumsum(gradient_waveform) * delta_time
+
+    return spatial_frequency
