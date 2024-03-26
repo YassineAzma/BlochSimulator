@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -86,7 +86,7 @@ def save_animation(anim: FuncAnimation, save_path: str):
 
 def animate(magnetisation: np.ndarray, delta_time: float, simulation_style: str,
             off_resonances: Optional[np.ndarray] = None,
-            position_axis: Optional[int | tuple[int]] = None,
+            position_axis: Optional[Union[int, tuple[int]]] = None,
             positions: Optional[np.ndarray] = None,
             rf_pulse: Optional[rf.RFPulse] = None,
             grad_x: Optional[gradient.Gradient] = None,
@@ -114,7 +114,7 @@ def animate(magnetisation: np.ndarray, delta_time: float, simulation_style: str,
 
 
 def non_selective_animation(magnetisation: np.ndarray, delta_time: float, off_resonances: np.ndarray,
-                            rf_pulse: rf.RFPulse, repeat: bool = True, num_frames: int = 500, save_path: str = None):
+                            rf_pulse: rf.RFPulse, repeat: bool = True, num_frames: int = 500):
     titles, times, waveforms = get_waveform_data(rf_pulse, None, None, None, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
@@ -153,7 +153,7 @@ def slice_selective_animation(magnetisation: np.ndarray, delta_time: float, axis
                               rf_pulse: rf.RFPulse,
                               grad_x: Optional[gradient.Gradient], grad_y: Optional[gradient.Gradient],
                               grad_z: Optional[gradient.Gradient],
-                              repeat: bool = True, num_frames: int = 500, save_path: str = None):
+                              repeat: bool = True, num_frames: int = 500):
     titles, times, waveforms = get_waveform_data(rf_pulse, grad_x, grad_y, grad_z, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
@@ -193,7 +193,7 @@ def spectral_spatial_animation(magnetisation: np.ndarray, delta_time: float, off
                                rf_pulse: rf.RFPulse,
                                grad_x: Optional[gradient.Gradient], grad_y: Optional[gradient.Gradient],
                                grad_z: Optional[gradient.Gradient],
-                               repeat: bool = True, num_frames: int = 500, save_path: str = None):
+                               repeat: bool = True, num_frames: int = 500):
     titles, times, waveforms = get_waveform_data(rf_pulse, grad_x, grad_y, grad_z, delta_time)
 
     fig, axes = create_waveform_frames(titles, times, waveforms)
