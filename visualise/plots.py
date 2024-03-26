@@ -89,15 +89,27 @@ def pulse_time_efficiency(off_resonances: np.ndarray, magnetisation: np.ndarray,
 
 
 def frequency_profile(off_resonances: np.ndarray, magnetisation: np.ndarray):
-    end_mxy = np.abs(magnetisation[-1, :, 0] + 1j * magnetisation[-1, :, 1])
+    mxy_abs = np.abs(magnetisation[-1, :, 0] + 1j * magnetisation[-1, :, 1])
+    mxy_angle = np.angle(magnetisation[-1, :, 0] + 1j * magnetisation[-1, :, 1])
     end_mz = magnetisation[-1, :, 2]
 
-    plt.plot(off_resonances, end_mxy, label='$M_{xy}$', color='black')
-    plt.plot(off_resonances, end_mz, label='$M_{z}$', color='red')
+    fig, ax = plt.subplots()
+
+    ax.plot(off_resonances, mxy_abs, label='$M_{xy}$', color='black')
+    ax.plot(off_resonances, end_mz, label='$M_{z}$', color='red')
+    ax.set_ylabel('Magnetisation')
+    ax.set_ylim([-0.05, 1.05])
+
+    ax2 = ax.twinx()
+    ax2.plot(off_resonances, mxy_angle, label='$∠M_{xy}$', color='black', ls='--', lw=0.5)
+    ax2.set_ylabel('Phase (rad)')
+    ax2.set_ylim([-3 * np.pi / 2, 3 * np.pi / 2])
+
     plt.xlabel('Isochromat Frequency (Hz)')
-    plt.ylabel('Magnetisation')
     plt.title('Frequency Profile')
-    plt.ylim([-0.05, 1.05])
-    plt.legend()
+    ax.legend()
+    ax2.legend()
     plt.grid()
+
+    fig.tight_layout()
     plt.show()
