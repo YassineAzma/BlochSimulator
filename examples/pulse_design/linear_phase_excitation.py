@@ -1,3 +1,10 @@
+from matplotlib import pyplot as plt
+
+import analyse
+import vendor.siemens
+from sequence.gradient import calculate_excitation_amplitude
+from vendor import siemens
+
 import numpy as np
 
 import bloch.simulate
@@ -121,24 +128,50 @@ class SLRDesign:
         waveform = slr.inverse_slr(alpha, beta)
 
         pulse = sequence.rf.create(waveform, duration / len(waveform))
+        pulse.additional_info['bandwidth'] = bandwidth
+        pulse.additional_info['duration'] = duration
 
         return pulse
 
 
-bandwidth = 3000
-duration = 2e-3
+bandwidth = 4000
+duration = 1.2e-3
 time_bandwidth_product = bandwidth * duration
 
 test = SLRDesign(0.001, 0.01, time_bandwidth_product, 'excitation')
-pulse = test.design_pulse(255, duration, 2, 'linear')
+pulse = test.design_pulse(1201, duration, 2, 'linear')
 pulse_amplitude = pulse.get_optimal_amplitude(30e-6, (-1000.0, 1000.0), np.pi / 2, display=True)
 pulse.set_amplitude(pulse_amplitude)
-pulse.get_info()
+pulse.display()
 
-isochromats = np.linspace(-2500, 2500, 500)
-magnetisation = bloch.simulate.non_selective_rot3d_matrix(t1=np.inf, t2=np.inf, df=isochromats,
-                                                          rf_pulse=pulse.get_waveform(1e-5),
-                                                          delta_time=1e-5)
+isochromats = np.linspace(-5000, 5000, 1000)
+magnetisation = bloch.simulate.run(t1=np.inf, t2=np.inf, simulation_style='non_selective', df=isochromats,
+                                   rf_pulse=pulse.get_waveform(1e-5),
+                                   delta_time=1e-5)
 
-animation = visualise.non_selective_animation(pulse, magnetisation, isochromats, 1e-5,
-                                              play=True, repeat=True, phase_mode=0, save_path=None)
+print(analyse.profile.profile_analysis(isochromats, magnetisation, 0.01, 0.05))
+fwhm = analyse.profile.get_full_width_half_maximum(isochromats, magnetisation)
+delta_time = 1e-5
+animation = visualise.animate(magnetisation, 1e-5, simulation_style='non_selective', off_resonances=isochromats,
+                              rf_pulse=pulse, repeat=False, save_path=None)
+
+reference_gradient = vendor.siemens.calculate_ref_grad(duration, fwhm)
+siemens.pulse_to_pta(pulse, 'Yassine_SLR', f'TBP_{bandwidth * duration}', file_name='Yassine_SLR',
+                     ref_grad=reference_gradient,
+                     comment=f'SLR Pulse with {bandwidth}Hz BW, 1.2ms duration, 0.1% passband ripple, 1% stopband ripple')
+
+positions = np.zeros((1000, 3))
+positions[:, 2] = np.linspace(-20e-3, 20e-3, 1000)
+
+grad_strength = sequence.gradient.calculate_excitation_amplitude(fwhm, 10e-3)
+gradient_z = sequence.gradient.rect_gradient(duration, 1e-3, 1e-6)
+
+sel_magnetisation = bloch.simulate.run(t1=np.inf, t2=np.inf, simulation_style='spatial_selective', position=positions,
+                                       rf_pulse=pulse.get_waveform(delta_time),
+                                       grad_z=gradient_z.get_waveform(delta_time),
+                                       delta_time=delta_time)
+
+visualise.animate(sel_magnetisation, delta_time=delta_time, simulation_style='1d_selective',
+                  rf_pulse=pulse, positions=positions, position_axis=2,
+                  grad_z=gradient_z,
+                  repeat=False, save_path=None)
