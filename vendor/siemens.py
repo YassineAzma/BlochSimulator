@@ -1,7 +1,9 @@
 from typing import Optional
 
 import numpy as np
+from matplotlib import pyplot as plt
 
+from constants import GAMMA
 from sequence.rf_pulse import RFPulse
 
 
@@ -51,8 +53,10 @@ def extract_rf_pulse(file_path: str, channel: int = 0, save: bool = False) -> np
     rf_phase = _extract_column(file_path, f'RF-Signal Phase (ch. {channel}, 1H, 123.2 MHz)')
     nco_phase = _extract_column(file_path, 'Numeric Crystal Oscillator 1 Phase')
 
+    plt.plot(nco_phase)
+    plt.show()
     b1_pulse = rf_envelope / np.max(rf_envelope) * np.exp(1j * np.deg2rad(rf_phase + nco_phase))
-
+    # b1_pulse = nco_phase / (np.max(nco_phase) * np.exp(1j * np.deg2rad(rf_envelope + rf_phase)))
     stripped_file_path = file_path.rstrip('.txt')
     if save:
         np.save(f'{stripped_file_path}_b1.npy', b1_pulse)
@@ -74,9 +78,16 @@ def extract_gradients(file_path: str, save: bool = False) -> np.ndarray:
     return gradients
 
 
-def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: str, ref_grad: float, comment: str = None) -> None:
+def calculate_ref_grad(pulse_duration: float, bandwidth: float) -> float:
+    tbp = pulse_duration * bandwidth
+
+    return tbp / (GAMMA * 5.12e-3 * 10e-3)
+
+
+def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: str, ref_grad: float,
+                 comment: str = None) -> None:
     waveform = pulse.get_waveform(1e-6)[1:-1]
-    normalized_waveform = np.abs(waveform) / np.abs(waveform).max()
+    normalized_waveform = waveform / np.abs(waveform).max()
 
     amplitude_integral = np.sqrt(np.sum(normalized_waveform.real) ** 2 +
                                  np.sum(normalized_waveform.imag) ** 2)
@@ -86,7 +97,7 @@ def pulse_to_pta(pulse: RFPulse, family_name: str, pulse_name: str, file_name: s
         # Write header information
         file.write(f'PULSENAME: {family_name}.{pulse_name}\n')
         file.write(f'COMMENT: {comment}\n')
-        file.write(f'REFGRAD: {1000*ref_grad}\n')
+        file.write(f'REFGRAD: {1000 * ref_grad}\n')
         file.write(f'MINSLICE: 1.000000000\n')
         file.write(f'MAXSLICE: 400.000000000\n')
         file.write(f'AMPINT: {amplitude_integral}\n')
