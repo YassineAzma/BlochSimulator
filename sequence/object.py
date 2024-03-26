@@ -36,8 +36,6 @@ class SequenceObject:
         self.times = new_times
         self.waveform = comb_data / self.amplitude
 
-
-
     @staticmethod
     def normalize(data: np.ndarray):
         return data / np.max(np.abs(data))
@@ -66,12 +64,6 @@ class SequenceObject:
 
     def set_amplitude(self, amplitude: float):
         self.amplitude = amplitude
-
-    def crop(self):
-        """TO DO"""
-        zero_amplitude = np.where(np.abs(self.get_waveform()) == 0)
-        before = np.where(np.diff(zero_amplitude) > 1)
-        print(before)
 
 
 def generate_times(delta_time: float, duration: float) -> np.ndarray:
